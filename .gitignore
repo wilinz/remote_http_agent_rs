@@ -1,0 +1,12 @@
+/target
+
+# 配置文件
+config.json5
+config.temp.json5
+
+# IDE
+.idea/
+.vscode/
+
+# 日志文件
+*.log

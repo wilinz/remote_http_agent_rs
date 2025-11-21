@@ -1,0 +1,22 @@
+{
+  // 是否启用 TLS/HTTPS
+  "tls": false,
+
+  // TLS 证书路径（启用 TLS 时需要）
+  "tls_cert": "",
+
+  // TLS 私钥路径（启用 TLS 时需要）
+  "tls_key": "",
+
+  // 监听地址和端口
+  "listening": "0.0.0.0:10010",
+
+  // Bearer 认证 Token（自动生成或手动设置）
+  "token": "your-secret-token-here",
+
+  // 上游 HTTP 代理（可选，留空表示不使用代理）
+  "http_proxy": "",
+
+  // 是否跳过上游服务器的 TLS 证书验证（仅用于开发环境）
+  "insecure_skip_verify": true
+}
