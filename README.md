@@ -53,7 +53,7 @@ cargo run
   "listening": "0.0.0.0:10010",
   "token": "your-secret-token-here",  // 修改为自己的 token
   "http_proxy": "",
-  "skip_tls": true
+  "insecure_skip_verify": false
 }
 ```
 
@@ -98,11 +98,10 @@ const data = await response.json();
 
 - `Content-Type`
 - `Content-Length`
-- `Referer`
 - `User-Agent`
 - `Accept`
-- `Cookie`
 - `Accept-Encoding`
+- `Keep-Alive`
 
 ### 示例
 
@@ -133,7 +132,7 @@ Content-Type: application/json
 
 ### Set-Cookie
 
-上游的 `Set-Cookie` 头部会被重命名为 `tun-Set-Cookie`，避免与代理服务器的 CORS 头冲突。
+上游的 `Set-Cookie` 头部会被重命名为 `tun-Set-Cookie`，避免浏览器自动处理。
 
 ## 配置选项
 
@@ -145,12 +144,12 @@ Content-Type: application/json
 | `listening` | string | 监听地址（如 "0.0.0.0:10010"） |
 | `token` | string | Bearer 认证 Token |
 | `http_proxy` | string | 上游 HTTP 代理地址（可选） |
-| `skip_tls` | bool | 跳过目标站点 TLS 证书验证（仅开发环境） |
+| `insecure_skip_verify` | bool | 跳过目标站点 TLS 证书验证（仅开发环境） |
 
 ## 安全考虑
 
 - **Token 认证**：确保 `token` 设置为强随机值，不要泄露
-- **TLS 验证**：生产环境建议 `skip_tls` 设置为 `false`
+- **TLS 验证**：生产环境建议 `insecure_skip_verify` 设置为 `false`
 - **SSRF 风险**：当前未限制目标 URL，请在受信任环境中使用
 - **速率限制**：生产环境建议添加速率限制中间件
 
