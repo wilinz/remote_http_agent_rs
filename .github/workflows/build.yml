@@ -45,6 +45,13 @@ jobs:
             asset_name: remote_http_agent-windows-x86.exe
             use_cross: false
 
+          # Windows 32-bit GNU (for Windows 7 compatibility)
+          - os: windows-latest
+            target: i686-pc-windows-gnu
+            artifact_name: remote_http_agent.exe
+            asset_name: remote_http_agent-windows-x86-gnu.exe
+            use_cross: false
+
           # Linux x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
