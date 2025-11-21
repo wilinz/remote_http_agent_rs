@@ -1,6 +1,6 @@
-# Remote HTTP Agent (CORS Reverse Proxy)
+# Remote HTTP Agent
 
-一个用 Rust 编写的 CORS 反向代理服务器，用于解决 Web 端跨域访问问题。
+一个用 Rust 编写的 HTTP 转发器，用于解决 Web HTTP 不自由的问题，比如不允许修改某些头，不允许跨域。
 
 这是 [cors_reverse_proxy](https://github.com/wilinz/cors_reverse_proxy) Go 版本的 Rust 实现。
 
