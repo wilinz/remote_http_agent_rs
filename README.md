@@ -1,194 +1,160 @@
 # Remote HTTP Agent
 
-一个用 Rust 编写的 HTTP 转发器，用于解决 Web HTTP 不自由的问题，比如不允许修改某些头，不允许跨域。
+一个用 Rust 编写的 HTTP 反向代理，解决浏览器跨域、请求头限制等问题。
 
 这是 [cors_reverse_proxy](https://github.com/wilinz/cors_reverse_proxy) Go 版本的 Rust 实现。
 
 ## 特性
 
-- ✅ **完整的 CORS 支持**：自动处理预检请求、跨域头部
-- ✅ **Bearer Token 认证**：简单有效的认证机制
-- ✅ **智能头部转发**：使用 `tun-` 前缀机制灵活控制头部转发
-- ✅ **重定向处理**：自动处理 3xx 重定向，避免浏览器跨域错误
-- ✅ **Set-Cookie 支持**：正确处理跨域 Cookie 设置
-- ✅ **流式传输**：高效处理大文件
-- ✅ **TLS 支持**：可选的 HTTPS 服务
-- ✅ **代理链支持**：可配置上游 HTTP 代理
+- **完整的 CORS 支持**：自动处理预检请求和跨域头部
+- **Bearer Token 认证**：保护代理端点
+- **`tun-` 前缀头部转发**：灵活控制哪些头部转发到目标服务器
+- **重定向处理**：3xx 响应转为 200，原始信息保存在 `tun-*` 头部
+- **Set-Cookie 转发**：重命名为 `tun-set-cookie`，避免浏览器自动处理
+- **流式传输**：高效处理大响应体
+- **上游代理支持**：可配置 HTTP 代理
+- **无控制台窗口**：提供 GUI 构建版本（Windows），启动不弹黑框
+
+## 下载
+
+从 [Releases](../../releases) 下载对应平台的预编译二进制：
+
+| 文件名 | 平台 |
+|--------|------|
+| `remote_http_agent-windows-x64.exe` | Windows 64 位（带控制台） |
+| `remote_http_agent-windows-x64-gui.exe` | Windows 64 位（无黑框） |
+| `remote_http_agent-windows-x86.exe` | Windows 32 位（带控制台） |
+| `remote_http_agent-windows-x86-gui.exe` | Windows 32 位（无黑框） |
+| `remote_http_agent-windows-x86-gnu.exe` | Windows 32 位 GNU（兼容 Windows 7） |
+| `remote_http_agent-windows-x86-gnu-gui.exe` | Windows 32 位 GNU 无黑框（兼容 Windows 7） |
+| `remote_http_agent-macos-arm64` | macOS Apple Silicon |
+| `remote_http_agent-macos-x64` | macOS Intel |
+| `remote_http_agent-linux-x64` | Linux x86_64 |
+| `remote_http_agent-linux-x64-musl` | Linux x86_64（静态链接，更好的兼容性） |
+| `remote_http_agent-linux-arm64` | Linux ARM64 |
+| `remote_http_agent-linux-arm64-musl` | Linux ARM64（静态链接） |
+| `remote_http_agent-linux-armv7` | Linux ARMv7 |
 
 ## 快速开始
 
-### 1. 安装 Rust
+### 1. 配置
 
-确保已安装 Rust 1.70+：
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-### 2. 克隆并构建
-
-```bash
-git clone <this-repo>
-cd remote_http_agent
-cargo build --release
-```
-
-### 3. 配置
-
-首次运行会生成配置模板：
-
-```bash
-cargo run
-# 或
-./target/release/remote_http_agent
-```
-
-这会创建 `config.temp.json5` 文件，将其重命名为 `config.json5` 并修改配置：
+在可执行文件同目录下创建 `config.json5`：
 
 ```json5
 {
-  "tls": false,
-  "tls_cert": "",
-  "tls_key": "",
   "listening": "0.0.0.0:10010",
-  "token": "your-secret-token-here",  // 修改为自己的 token
-  "http_proxy": "",
-  "insecure_skip_verify": false
+  "token": "your-secret-token-here",
+  // "http_proxy": "http://127.0.0.1:9000",
+  "skip_tls": true
 }
 ```
 
-### 4. 运行
+配置文件不存在时使用内置默认值直接启动。
+
+### 2. 运行
 
 ```bash
-cargo run --release
+./remote_http_agent
 ```
 
-## 使用方法
+启动后会在当前目录生成停止脚本：
+- Windows：`kill.bat`
+- Linux/macOS：`kill.sh`
 
-### cURL 示例
+## 配置项
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `listening` | string | `0.0.0.0:10010` | 监听地址 |
+| `token` | string | 随机 UUID | Bearer 认证 Token |
+| `http_proxy` | string | `""` | 上游 HTTP 代理（可选） |
+| `skip_tls` | bool | `true` | 跳过目标站点 TLS 证书验证 |
+
+## API
+
+### `GET/POST/... /proxy?url=<目标地址>`
+
+转发请求到目标地址。
+
+**请求头**：
+```
+Authorization: Bearer <token>
+```
+
+**示例**：
+```bash
+curl -H "Authorization: Bearer your-token" \
+  "http://127.0.0.1:10010/proxy?url=https://api.example.com/data"
+```
+
+### `GET /lanip`
+
+获取本机局域网 IP 地址。
+
+```json
+{"code": 0, "msg": "success", "ip": "192.168.1.100"}
+```
+
+### `GET /kill`
+
+停止程序（等效于执行 `kill.bat` / `kill.sh`）。
+
+```json
+{"code": 0, "msg": "程序即将退出"}
+```
+
+## 头部转发规则
+
+### `tun-` 前缀
+
+发送 `tun-X-Custom-Header: value`，代理会以 `X-Custom-Header: value` 转发到目标服务器。
+
+`tun-` 版本优先级高于同名默认头部，可用于覆盖默认白名单字段。
+
+### 默认白名单（无需 `tun-` 前缀）
+
+`Content-Type`、`Content-Length`、`Referer`、`User-Agent`、`Accept`、`Cookie`、`Accept-Encoding`、`Keep-Alive`
+
+### 响应头处理
+
+| 上游响应头 | 代理返回头 | 说明 |
+|-----------|-----------|------|
+| `Location` | `tun-Location` + `tun-Location-Proxy` | 重定向转为 200，URL 保存在此 |
+| `Set-Cookie` | `tun-set-cookie` | 避免浏览器自动处理 |
+| 3xx 状态码 | `tun-status` | 原始状态码 |
+
+## 从源码构建
 
 ```bash
-curl -i \
-  -H "Authorization: Bearer your-secret-token-here" \
-  -H "tun-Referer: https://example.com" \
-  "http://127.0.0.1:10010/proxy?url=https://www.example.com"
+cargo build --release                        # 普通版（带控制台）
+cargo build --release --features gui         # GUI 版（Windows 无黑框）
 ```
 
-### JavaScript/Fetch 示例
-
-```javascript
-const response = await fetch('http://127.0.0.1:10010/proxy?url=https://api.example.com/data', {
-  headers: {
-    'Authorization': 'Bearer your-secret-token-here',
-    'tun-Content-Type': 'application/json',
-    'tun-Referer': 'https://example.com'
-  }
-});
-
-const data = await response.json();
-```
-
-## 头部转发机制
-
-### `tun-` 前缀规则
-
-只有以 `tun-` 前缀开头的头部会被转发到目标服务器（转发时去除前缀）。
-
-**默认白名单**（无需前缀也会转发）：
-
-- `Content-Type`
-- `Content-Length`
-- `User-Agent`
-- `Accept`
-- `Accept-Encoding`
-- `Keep-Alive`
-
-### 示例
-
-**客户端发送**：
-```
-Authorization: Bearer token
-tun-X-Custom-Header: value
-tun-Cookie: session=abc123
-Content-Type: application/json
-```
-
-**转发到目标服务器**：
-```
-X-Custom-Header: value
-Cookie: session=abc123
-Content-Type: application/json
-```
-
-## 响应头处理
-
-### Location 重定向
-
-重定向响应会被转换为 200 OK，原始信息保存在特殊头部：
-
-- `tun-location`：原始重定向地址
-- `tun-location-proxy`：转换为代理格式的地址
-- `tun-status`：原始状态码
-
-### Set-Cookie
-
-上游的 `Set-Cookie` 头部会被重命名为 `tun-Set-Cookie`，避免浏览器自动处理。
-
-## 配置选项
-
-| 选项 | 类型 | 说明 |
-|------|------|------|
-| `tls` | bool | 是否启用 HTTPS |
-| `tls_cert` | string | TLS 证书路径 |
-| `tls_key` | string | TLS 私钥路径 |
-| `listening` | string | 监听地址（如 "0.0.0.0:10010"） |
-| `token` | string | Bearer 认证 Token |
-| `http_proxy` | string | 上游 HTTP 代理地址（可选） |
-| `insecure_skip_verify` | bool | 跳过目标站点 TLS 证书验证（仅开发环境） |
-
-## 安全考虑
-
-- **Token 认证**：确保 `token` 设置为强随机值，不要泄露
-- **TLS 验证**：生产环境建议 `insecure_skip_verify` 设置为 `false`
-- **SSRF 风险**：当前未限制目标 URL，请在受信任环境中使用
-- **速率限制**：生产环境建议添加速率限制中间件
-
-## 开发
-
-### 运行测试
+### 日志级别
 
 ```bash
-cargo test
-```
-
-### 开启日志
-
-```bash
-RUST_LOG=debug cargo run
+RUST_LOG=debug ./remote_http_agent
 ```
 
 ## 项目结构
 
 ```
 src/
-├── main.rs         # 入口点和服务器配置
-├── config.rs       # 配置管理
-├── auth.rs         # Bearer Token 认证
-├── proxy.rs        # 代理核心逻辑
-└── headers.rs      # 请求/响应头处理
+├── main.rs      # 入口、中间件、路由
+├── config.rs    # 配置加载
+├── proxy.rs     # 代理核心逻辑
+├── headers.rs   # 请求/响应头处理
+├── auth.rs      # Bearer Token 验证
+└── ip.rs        # 局域网 IP 获取
 ```
 
-## 与 Go 版本的差异
+## 安全说明
 
-- 使用 `axum` web 框架代替 `gin`
-- 使用 `reqwest` HTTP 客户端代替 Go 的 `net/http`
-- 完全异步实现，基于 `tokio` 运行时
-- 类型安全的错误处理
+- `token` 请设置为强随机值，不要使用默认值
+- 未限制目标 URL，请在受信任网络环境中使用
+- 生产环境建议 `skip_tls` 设为 `false`
 
-## 许可证
+## License
 
-MIT License
-
-## 致谢
-
-本项目是 [cors_reverse_proxy](https://github.com/wilinz/cors_reverse_proxy) 的 Rust 实现。
+MIT
