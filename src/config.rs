@@ -25,18 +25,21 @@ pub struct Config {
 
 fn default_listening() -> String {
     option_env!("DEFAULT_LISTENING")
+        .filter(|s| !s.is_empty())
         .unwrap_or("0.0.0.0:10010")
         .to_string()
 }
 
 fn default_token() -> String {
     option_env!("DEFAULT_TOKEN")
+        .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .unwrap_or_else(|| Uuid::new_v4().to_string())
 }
 
 fn default_skip_tls() -> bool {
     option_env!("DEFAULT_SKIP_TLS")
+        .filter(|s| !s.is_empty())
         .map(|v| v.eq_ignore_ascii_case("true"))
         .unwrap_or(true)
 }
