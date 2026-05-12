@@ -23,6 +23,7 @@ jobs:
             artifact_name: remote_http_agent
             asset_name: remote_http_agent-macos-arm64
             use_cross: false
+            features: ""
 
           # macOS x86_64 (Intel)
           - os: macos-latest
@@ -30,6 +31,7 @@ jobs:
             artifact_name: remote_http_agent
             asset_name: remote_http_agent-macos-x64
             use_cross: false
+            features: ""
 
           # Windows 64-bit MSVC
           - os: windows-latest
@@ -37,6 +39,15 @@ jobs:
             artifact_name: remote_http_agent.exe
             asset_name: remote_http_agent-windows-x64.exe
             use_cross: false
+            features: ""
+
+          # Windows 64-bit MSVC (GUI, no console)
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: remote_http_agent.exe
+            asset_name: remote_http_agent-windows-x64-gui.exe
+            use_cross: false
+            features: "gui"
 
           # Windows 32-bit MSVC
           - os: windows-latest
@@ -44,6 +55,15 @@ jobs:
             artifact_name: remote_http_agent.exe
             asset_name: remote_http_agent-windows-x86.exe
             use_cross: false
+            features: ""
+
+          # Windows 32-bit MSVC (GUI, no console)
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            artifact_name: remote_http_agent.exe
+            asset_name: remote_http_agent-windows-x86-gui.exe
+            use_cross: false
+            features: "gui"
 
           # Windows 32-bit GNU (for Windows 7 compatibility)
           - os: windows-latest
@@ -51,13 +71,31 @@ jobs:
             artifact_name: remote_http_agent.exe
             asset_name: remote_http_agent-windows-x86-gnu.exe
             use_cross: false
+            features: ""
 
-          # Linux x86_64
+          # Windows 32-bit GNU GUI (for Windows 7 compatibility, no console)
+          - os: windows-latest
+            target: i686-pc-windows-gnu
+            artifact_name: remote_http_agent.exe
+            asset_name: remote_http_agent-windows-x86-gnu-gui.exe
+            use_cross: false
+            features: "gui"
+
+          # Linux x86_64 glibc
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: remote_http_agent
             asset_name: remote_http_agent-linux-x64
             use_cross: false
+            features: ""
+
+          # Linux x86_64 musl (static, portable)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact_name: remote_http_agent
+            asset_name: remote_http_agent-linux-x64-musl
+            use_cross: true
+            features: ""
 
           # Linux ARM64
           - os: ubuntu-latest
@@ -65,6 +103,15 @@ jobs:
             artifact_name: remote_http_agent
             asset_name: remote_http_agent-linux-arm64
             use_cross: true
+            features: ""
+
+          # Linux ARM64 musl (static, portable)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            artifact_name: remote_http_agent
+            asset_name: remote_http_agent-linux-arm64-musl
+            use_cross: true
+            features: ""
 
           # Linux ARMv7
           - os: ubuntu-latest
@@ -72,6 +119,7 @@ jobs:
             artifact_name: remote_http_agent
             asset_name: remote_http_agent-linux-armv7
             use_cross: true
+            features: ""
 
     steps:
       - name: Checkout code
@@ -84,48 +132,54 @@ jobs:
 
       - name: Install cross
         if: matrix.use_cross == true
-        run: |
-          cargo install cross --git https://github.com/cross-rs/cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
 
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
 
       - name: Build release binary (native)
         if: matrix.use_cross == false
-        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          DEFAULT_TOKEN: ${{ secrets.DEFAULT_TOKEN }}
+          DEFAULT_LISTENING: ${{ secrets.DEFAULT_LISTENING }}
+          DEFAULT_HTTP_PROXY: ${{ secrets.DEFAULT_HTTP_PROXY }}
+          DEFAULT_SKIP_TLS: ${{ secrets.DEFAULT_SKIP_TLS }}
+        run: |
+          if [ -n "${{ matrix.features }}" ]; then
+            cargo build --release --target ${{ matrix.target }} --features ${{ matrix.features }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+        shell: bash
 
       - name: Build release binary (cross)
         if: matrix.use_cross == true
-        run: cross build --release --target ${{ matrix.target }}
+        env:
+          DEFAULT_TOKEN: ${{ secrets.DEFAULT_TOKEN }}
+          DEFAULT_LISTENING: ${{ secrets.DEFAULT_LISTENING }}
+          DEFAULT_HTTP_PROXY: ${{ secrets.DEFAULT_HTTP_PROXY }}
+          DEFAULT_SKIP_TLS: ${{ secrets.DEFAULT_SKIP_TLS }}
+        run: |
+          if [ -n "${{ matrix.features }}" ]; then
+            cross build --release --target ${{ matrix.target }} --features ${{ matrix.features }}
+          else
+            cross build --release --target ${{ matrix.target }}
+          fi
 
-      - name: Strip binary (Unix)
-        if: matrix.os != 'windows-latest'
-        run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }} || true
-
-      - name: Rename binary
+      - name: Package artifact
         shell: bash
         run: |
           mkdir -p artifacts
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.asset_name }}
-          else
-            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.asset_name }}
-          fi
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.asset_name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
