@@ -76,21 +76,6 @@ jobs:
             use_cross: false
             features: "gui"
 
-          # Windows 32-bit GNU (for Windows 7 compatibility)
-          - os: windows-latest
-            target: i686-pc-windows-gnu
-            artifact_name: remote_http_agent.exe
-            asset_name: remote_http_agent-windows-x86-gnu.exe
-            use_cross: false
-            features: ""
-
-          # Windows 32-bit GNU GUI (for Windows 7 compatibility, no console)
-          - os: windows-latest
-            target: i686-pc-windows-gnu
-            artifact_name: remote_http_agent.exe
-            asset_name: remote_http_agent-windows-x86-gnu-gui.exe
-            use_cross: false
-            features: "gui"
 
           # Linux x86_64 glibc
           - os: ubuntu-latest

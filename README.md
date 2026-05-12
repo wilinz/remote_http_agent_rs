@@ -25,8 +25,6 @@
 | `remote_http_agent-windows-x64-gui.exe` | Windows 64 位（无黑框） |
 | `remote_http_agent-windows-x86.exe` | Windows 32 位（带控制台） |
 | `remote_http_agent-windows-x86-gui.exe` | Windows 32 位（无黑框） |
-| `remote_http_agent-windows-x86-gnu.exe` | Windows 32 位 GNU（兼容 Windows 7） |
-| `remote_http_agent-windows-x86-gnu-gui.exe` | Windows 32 位 GNU 无黑框（兼容 Windows 7） |
 | `remote_http_agent-macos-arm64` | macOS Apple Silicon |
 | `remote_http_agent-macos-x64` | macOS Intel |
 | `remote_http_agent-linux-x64` | Linux x86_64 |
