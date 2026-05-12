@@ -1,3 +1,14 @@
+# Required GitHub Actions Secrets (Settings → Secrets and variables → Actions):
+#
+# DEFAULT_TOKEN      - Bearer auth token baked into the binary at compile time
+#                      (optional; if unset, a random UUID is generated at runtime)
+# DEFAULT_LISTENING  - Default listen address, e.g. 0.0.0.0:10010
+#                      (optional; defaults to 0.0.0.0:10010)
+# DEFAULT_HTTP_PROXY - Upstream HTTP proxy, e.g. http://127.0.0.1:9000
+#                      (optional; defaults to empty / no proxy)
+# DEFAULT_SKIP_TLS   - Skip upstream TLS verification: "true" or "false"
+#                      (optional; defaults to true)
+
 name: Build Releases
 
 on:
